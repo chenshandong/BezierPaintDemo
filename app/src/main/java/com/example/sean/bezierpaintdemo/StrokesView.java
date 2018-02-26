@@ -37,15 +37,15 @@ public class StrokesView extends View {
     private int mWidth;
 
     private static final int BEZIER_WIDTH = 1; // 贝塞尔曲线线宽
-    private static final int FILL_PAINT_WIDTH = 100; // 填充线宽
+    private static final int FILL_PAINT_WIDTH = 160; // 填充线宽
     private static final int Matt_WIDTH = 2; // 田字格线宽
     private Paint mBezierPaint = null;
+    private Paint mBezierPaint2 = null;
     private Paint mStrokesPaint = null;
     private Paint mRectPaint = null;
     private Path mBezierPath = null; // 贝塞尔曲线路径
     private Path mStrokesPath = null; // 画笔的曲线
     private Path mRectPath = null;
-    private PorterDuffXfermode xorMode = new PorterDuffXfermode(PorterDuff.Mode.XOR);
     private PorterDuffXfermode srcInMode = new PorterDuffXfermode(PorterDuff.Mode.SRC_IN);
     public int index = -1;
     public int doneIndex = -1;
@@ -56,10 +56,11 @@ public class StrokesView extends View {
     private static final int FRAME = 2000;  // 2000帧
     public int mR = 0;  // 移动速率
     public int mRate = RATE;   // 速率
-    public ArrayList<ArrayList<PointF>> mMovePoints; // 移动点集
-    public ArrayList<PointF> mInstantPoints; //内部线段之间的移动点集
+    public ArrayList<ArrayList<PointF>> mMovePoints; // 所有笔画的移动点集合
+    public ArrayList<PointF> mInstantPoints; // 内部线段之间的移动点集
     private Handler mHandlerLoop;
-    public boolean isLooping;
+    public boolean isLooping; // 单个笔画的循环控制
+    public boolean isStart; // 整个字或者单笔画是否开始描绘
 
     public StrokesView(Context context) {
         super(context);
@@ -83,9 +84,10 @@ public class StrokesView extends View {
         @Override
         public void handleMessage(Message msg) {
             if (msg.what == HANDLER_WHAT) {
-                Log.e("handleMessage", "handleMessage");
+                Log.e("test", "handleMessage2222");
                 strokesView.mR += strokesView.mRate;
-                if (strokesView.mR >= strokesView.mMovePoints.get(strokesView.index).size()) {
+                if (strokesView.index == -1 ||
+                        strokesView.mR >= strokesView.mMovePoints.get(strokesView.index).size()) {
                     removeMessages(HANDLER_WHAT);
                     strokesView.mR = 0;
                     strokesView.mInstantPoints = null;
@@ -94,7 +96,7 @@ public class StrokesView extends View {
                     return;
                 }
                 strokesView.isLooping = true;
-                // 切线点
+                // 增加内部移动点
                 if (strokesView.mInstantPoints == null) {
                     strokesView.mInstantPoints = new ArrayList<>();
                 }
@@ -113,6 +115,12 @@ public class StrokesView extends View {
         mBezierPaint.setStrokeWidth(BEZIER_WIDTH);
         mBezierPaint.setStyle(Paint.Style.FILL);
         mBezierPaint.setAntiAlias(true);
+
+        // 贝塞尔曲线画笔
+        mBezierPaint2 = new Paint();
+        mBezierPaint2.setColor(Color.GRAY);
+        mBezierPaint2.setStyle(Paint.Style.FILL);
+        mBezierPaint2.setAntiAlias(true);
 
         // 描绘的笔触
         mStrokesPaint = new Paint();
@@ -138,13 +146,19 @@ public class StrokesView extends View {
         mHandlerLoop = new Handler(handlerThread.getLooper()){
             @Override
             public void handleMessage(Message msg) {
+                Log.e("test", "mHandlerLoop");
+                if (!isStart){
+                    Log.e("test", "return 了 index: " + index);
+                    return;
+                }
+
                 while (true) {
                     try {
                         Thread.sleep(100);
                     } catch (InterruptedException e) {
                         e.printStackTrace();
                     }
-                    if (!isLooping){
+                    if (!isLooping || !isStart){
                         break;
                     }
                 }
@@ -154,6 +168,7 @@ public class StrokesView extends View {
                 } else {
                     doneIndex = -1;
                     index = -1;
+                    isStart = false;
                 }
 
                 mHandler.post(new Runnable() {
@@ -171,12 +186,13 @@ public class StrokesView extends View {
         if (w > 0) {
             mWidth = w;
             refreshDataFormat();
-            mMovePoints = buildBezierPoints();
+            buildBezierPoints();
         }
     }
 
     private void refreshDataFormat() {
-
+        mPathData.clear();
+        mBezierData.clear();
         if (!TextUtils.isEmpty(mBezierStr)) {
             JSONArray bezierArray = JSON.parseArray(mBezierStr);
             for (int i = 0; i < bezierArray.size(); i++) {
@@ -203,7 +219,7 @@ public class StrokesView extends View {
             Log.e("mPathData", "size: " + mBezierData.size());
         }
 
-        //调整数据比例
+        //调整数据比例 默认数据源以1024为比
         for (int i = 0; i < mBezierData.size(); i++) {
             List<PointData> points = mBezierData.get(i);
             for (int j = 0; j < points.size(); j++) {
@@ -233,11 +249,7 @@ public class StrokesView extends View {
 
     @Override
     protected void onDraw(Canvas canvas) {
-        canvas.saveLayer(0, 0, mWidth, mWidth, mRectPaint, Canvas.ALL_SAVE_FLAG);
-        canvas.drawColor(Color.GRAY);
-        canvas.restore();
-
-        canvas.saveLayer(0, 0, mWidth, mWidth, mRectPaint, Canvas.ALL_SAVE_FLAG);
+        canvas.saveLayer(0, 0, mWidth, mWidth, mBezierPaint, Canvas.ALL_SAVE_FLAG);
         canvas.drawColor(Color.WHITE);
 
         //计算加上线宽后的四边
@@ -298,17 +310,15 @@ public class StrokesView extends View {
                 }
             }
         }
-        mBezierPaint.setXfermode(xorMode);
         canvas.drawPath(mBezierPath, mBezierPaint);
         mBezierPaint.setXfermode(null);
         canvas.restore();
-
         //画文字路径
         if (index < mPathData.size() && index != -1) {
-            for (int i = 0; i <= index; i++) {
+            for (int i = index; i >= 0; i--) {
                 mBezierPath.reset();
-                canvas.saveLayer(0, 0, mWidth, mWidth, mRectPaint, Canvas.ALL_SAVE_FLAG);
-                canvas.drawColor(Color.TRANSPARENT);
+                canvas.saveLayer(0, 0, mWidth, mWidth, mBezierPaint, Canvas.ALL_SAVE_FLAG);
+                int saveLayer = canvas.save();
 
                 List<PointData> points = mBezierData.get(i);
                 for (int j = 0; j < points.size(); j++) {
@@ -330,7 +340,7 @@ public class StrokesView extends View {
                         mBezierPath.close();
                     }
                 }
-                canvas.drawPath(mBezierPath, mBezierPaint);
+                canvas.drawPath(mBezierPath, mBezierPaint2);
 
                 List<List<Integer>> lists = mPathData.get(i);
                 mStrokesPath.reset();
@@ -364,29 +374,49 @@ public class StrokesView extends View {
                 }
                 canvas.restore();
                 //防止界面resume时重新绘制
-                if (doneIndex != index) {
+                if (doneIndex != index && isStart) {
                     mHandler.removeMessages(HANDLER_WHAT);
                     mHandler.sendEmptyMessage(HANDLER_WHAT);
                 }
             }
         }
+        Log.e("getSaveCount", "getSaveCount: " + canvas.getSaveCount());
     }
 
-    public void drawStrokes(String mBezierStr) {
-        this.mBezierStr = mBezierStr;
+    public void drawStrokes(String mBezierStr, String pathStr) {
+        Log.e("test", "drawStrokes");
+        isStart = false;
+        isLooping = false;
+        index = -1;
+        doneIndex = -1;
+        if (!TextUtils.isEmpty(mBezierStr)){
+            this.mBezierStr = mBezierStr;
+        }
+        if (!TextUtils.isEmpty(pathStr)){
+            this.mPathStr = pathStr;
+        }
         refreshDataFormat();
         buildBezierPoints();
         invalidate();
     }
 
     public void doNextStroke() {
+        if (!isStart) {
+            index = -1;
+            doneIndex = -1;
+            isStart = true;
+        }
+        isLooping = false;
         mHandlerLoop.sendEmptyMessage(HANDLER_WHAT);
     }
 
     public void doAllStrokes() {
         index = -1;
         doneIndex = -1;
+        isStart = true;
+        isLooping = false;
         for (int i = 0; i < mPathData.size(); i++) {
+            Log.e("test", "doAllStrokes");
             mHandlerLoop.sendEmptyMessage(HANDLER_WHAT);
         }
     }
@@ -396,8 +426,12 @@ public class StrokesView extends View {
      *
      * @return
      */
-    private ArrayList<ArrayList<PointF>> buildBezierPoints() {
-        ArrayList<ArrayList<PointF>> allPoints = new ArrayList<>();
+    private void buildBezierPoints() {
+        if (mMovePoints == null) {
+            mMovePoints = new ArrayList<>();
+        } else {
+            mMovePoints.clear();
+        }
         for (int i = 0; i < mPathData.size(); i++) {
             ArrayList<PointF> points = new ArrayList<>();
             List<List<Integer>> lists = mPathData.get(i);
@@ -428,9 +462,8 @@ public class StrokesView extends View {
                     points.add(new PointF(deCasteljauX(t, x1, x2), deCasteljauY(t, y1, y2)));
                 }
             }
-            allPoints.add(points);
+            mMovePoints.add(points);
         }
-        return allPoints;
     }
 
     private int getDistance(int x1, int y1, int x2, int y2){
