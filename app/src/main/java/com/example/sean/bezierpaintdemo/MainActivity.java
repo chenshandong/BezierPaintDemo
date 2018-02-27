@@ -51,22 +51,22 @@ public class MainActivity extends AppCompatActivity {
         findViewById(R.id.btnRequest).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-//                strokeView.drawStrokes(null, null);
-                getPath();
+                strokeView.drawStrokes(null, null);
+//                getPath();
             }
         });
 
     }
 
     private void getPath() {
-        if (TextUtils.isEmpty(mEdt.getText().toString())){
+        if (TextUtils.isEmpty(mEdt.getText().toString())) {
             return;
         }
         OkHttpClient client = new OkHttpClient();
         //Form表单格式的参数传递
         FormBody formBody = new FormBody
                 .Builder()
-                .add("char",mEdt.getText().toString())//设置参数名称和参数值
+                .add("char", mEdt.getText().toString())//设置参数名称和参数值
                 .build();
         //创建一个Request
         Request request = new Request.Builder()

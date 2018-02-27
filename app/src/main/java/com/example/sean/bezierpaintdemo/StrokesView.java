@@ -40,6 +40,7 @@ public class StrokesView extends View {
     private static final int FILL_PAINT_WIDTH = 160; // 填充线宽
     private static final int Matt_WIDTH = 2; // 田字格线宽
     private Paint mBezierPaint = null;
+    private Paint mBezierPaint2 = null;
     private Paint mStrokesPaint = null;
     private Paint mRectPaint = null;
     private Paint mPointPaint = null;
@@ -117,6 +118,12 @@ public class StrokesView extends View {
         mBezierPaint.setStyle(Paint.Style.FILL);
         mBezierPaint.setAntiAlias(true);
 
+        // 贝塞尔曲线画笔
+        mBezierPaint2 = new Paint();
+        mBezierPaint2.setColor(Color.GRAY);
+        mBezierPaint2.setStyle(Paint.Style.FILL);
+        mBezierPaint2.setAntiAlias(true);
+
         // 描绘的笔触
         mStrokesPaint = new Paint();
         mStrokesPaint.setColor(Color.RED);
@@ -185,8 +192,6 @@ public class StrokesView extends View {
     protected void onSizeChanged(int w, int h, int oldw, int oldh) {
         if (w > 0) {
             mWidth = w;
-//            refreshDataFormat();
-//            buildBezierPoints();
         }
     }
 
@@ -313,7 +318,6 @@ public class StrokesView extends View {
         canvas.drawPath(mBezierPath, mBezierPaint);
         mBezierPaint.setXfermode(null);
         canvas.restore();
-
         //画点集合
 //        if (mMovePoints != null) {
 //            for (int i = 0; i < mMovePoints.size(); i++) {
@@ -324,13 +328,11 @@ public class StrokesView extends View {
 //                }
 //            }
 //        }
-
         //画文字路径
         if (index < mPathData.size() && index != -1) {
             for (int i = index; i >= 0; i--) {
                 mBezierPath.reset();
                 canvas.saveLayer(0, 0, mWidth, mWidth, mBezierPaint, Canvas.ALL_SAVE_FLAG);
-
                 List<PointData> points = mBezierData.get(i);
                 for (int j = 0; j < points.size(); j++) {
                     PointData pointData = points.get(j);
@@ -351,7 +353,7 @@ public class StrokesView extends View {
                         mBezierPath.close();
                     }
                 }
-                canvas.drawPath(mBezierPath, mBezierPaint);
+                canvas.drawPath(mBezierPath, mBezierPaint2);
 
                 List<List<Integer>> lists = mPathData.get(i);
                 mStrokesPath.reset();
@@ -426,6 +428,7 @@ public class StrokesView extends View {
             doneIndex = -1;
             isStart = true;
         }
+        isLooping = false;
         mHandlerLoop.sendEmptyMessage(HANDLER_WHAT);
     }
 
