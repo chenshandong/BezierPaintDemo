@@ -51,8 +51,8 @@ public class MainActivity extends AppCompatActivity {
         findViewById(R.id.btnRequest).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                strokeView.drawStrokes(null, null);
-//                getPath();
+//                strokeView.drawStrokes(null, null);
+                getPath();
             }
         });
 

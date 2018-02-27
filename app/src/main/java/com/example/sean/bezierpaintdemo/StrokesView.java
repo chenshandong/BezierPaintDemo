@@ -428,7 +428,6 @@ public class StrokesView extends View {
             doneIndex = -1;
             isStart = true;
         }
-        isLooping = false;
         mHandlerLoop.sendEmptyMessage(HANDLER_WHAT);
     }
 
