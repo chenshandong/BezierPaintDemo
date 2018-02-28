@@ -3,6 +3,7 @@ package com.example.sean.bezierpaintdemo;
 import android.content.Context;
 import android.graphics.Canvas;
 import android.graphics.Color;
+import android.graphics.DashPathEffect;
 import android.graphics.Paint;
 import android.graphics.Path;
 import android.graphics.PointF;
@@ -37,12 +38,12 @@ public class StrokesView extends View {
     private int mWidth;
 
     private static final int BEZIER_WIDTH = 1; // 贝塞尔曲线线宽
-    private static final int FILL_PAINT_WIDTH = 160; // 填充线宽
-    private static final int Matt_WIDTH = 2; // 田字格线宽
+    private static final int FILL_PAINT_WIDTH = 150; // 填充线宽
+    private static final int MATT_WIDTH = 2; // 田字格线宽
     private Paint mBezierPaint = null;
-    private Paint mBezierPaint2 = null;
     private Paint mStrokesPaint = null;
     private Paint mRectPaint = null;
+    private Paint mDashPaint = null;
     private Paint mPointPaint = null;
     private Path mBezierPath = null; // 贝塞尔曲线路径
     private Path mStrokesPath = null; // 画笔的曲线
@@ -53,8 +54,8 @@ public class StrokesView extends View {
     private StrokeHandler mHandler;
 
     private static final int HANDLER_WHAT = 100;
-    private static final int RATE = 1; // 移动速率
-    private static final int FRAME = 10;  // 帧
+    private static final int RATE = 10; // 移动速率
+    private static final int FRAME = 100;  // 帧
     public int mR = 0;  // 移动速率
     public int mRate = RATE;   // 速率
     public ArrayList<ArrayList<PointF>> mMovePoints; // 所有笔画的移动点集合
@@ -118,12 +119,6 @@ public class StrokesView extends View {
         mBezierPaint.setStyle(Paint.Style.FILL);
         mBezierPaint.setAntiAlias(true);
 
-        // 贝塞尔曲线画笔
-        mBezierPaint2 = new Paint();
-        mBezierPaint2.setColor(Color.GRAY);
-        mBezierPaint2.setStyle(Paint.Style.FILL);
-        mBezierPaint2.setAntiAlias(true);
-
         // 描绘的笔触
         mStrokesPaint = new Paint();
         mStrokesPaint.setColor(Color.RED);
@@ -134,9 +129,17 @@ public class StrokesView extends View {
 
         mRectPaint = new Paint();
         mRectPaint.setColor(Color.BLACK);
-        mRectPaint.setStrokeWidth(Matt_WIDTH);
+        mRectPaint.setStrokeWidth(MATT_WIDTH);
         mRectPaint.setStyle(Paint.Style.STROKE);
         mRectPaint.setAntiAlias(true);
+
+        mDashPaint = new Paint();
+        mDashPaint.setColor(Color.BLACK);
+        mDashPaint.setStrokeWidth(MATT_WIDTH);
+        mDashPaint.setStyle(Paint.Style.STROKE);
+        DashPathEffect dashPathEffect = new DashPathEffect(new float[]{10, 10, 10, 10}, 1);
+        mDashPaint.setPathEffect(dashPathEffect);
+        mDashPaint.setAntiAlias(true);
 
         mPointPaint = new Paint();
         mPointPaint.setColor(Color.BLACK);
@@ -258,10 +261,11 @@ public class StrokesView extends View {
         canvas.drawColor(Color.WHITE);
 
         //计算加上线宽后的四边
-        int left = Matt_WIDTH / 2;
-        int top = Matt_WIDTH / 2;
-        int right = mWidth - Matt_WIDTH / 2;
-        int bottom = mWidth - Matt_WIDTH / 2;
+        int left = MATT_WIDTH / 2;
+        int top = MATT_WIDTH / 2;
+        int right = mWidth - MATT_WIDTH / 2;
+        int bottom = mWidth - MATT_WIDTH / 2;
+
         //画田字格
         mRectPath.reset();
         mRectPath.moveTo(left, top);
@@ -274,22 +278,22 @@ public class StrokesView extends View {
         mRectPath.reset();
         mRectPath.moveTo(mWidth / 2, 0);
         mRectPath.lineTo(mWidth / 2, mWidth);
-        canvas.drawPath(mRectPath, mRectPaint);
+        canvas.drawPath(mRectPath, mDashPaint);
 
         mRectPath.reset();
         mRectPath.moveTo(0, mWidth / 2);
         mRectPath.lineTo(mWidth, mWidth / 2);
-        canvas.drawPath(mRectPath, mRectPaint);
+        canvas.drawPath(mRectPath, mDashPaint);
 
         mRectPath.reset();
         mRectPath.moveTo(0, 0);
         mRectPath.lineTo(mWidth, mWidth);
-        canvas.drawPath(mRectPath, mRectPaint);
+        canvas.drawPath(mRectPath, mDashPaint);
 
         mRectPath.reset();
         mRectPath.moveTo(mWidth, 0);
         mRectPath.lineTo(0, mWidth);
-        canvas.drawPath(mRectPath, mRectPaint);
+        canvas.drawPath(mRectPath, mDashPaint);
 
         //画底色贝塞尔文字
         mBezierPath.reset();
@@ -353,7 +357,7 @@ public class StrokesView extends View {
                         mBezierPath.close();
                     }
                 }
-                canvas.drawPath(mBezierPath, mBezierPaint2);
+                canvas.drawPath(mBezierPath, mBezierPaint);
 
                 List<List<Integer>> lists = mPathData.get(i);
                 mStrokesPath.reset();
@@ -475,7 +479,7 @@ public class StrokesView extends View {
                 int y1 = lists.get(j).get(1);
                 int y2 = lists.get(j + 1).get(1);
                 int distance = getDistance(x1, y1, x2, y2);
-                int newFRAME = (int) (distance * FRAME * 1.0f / maxDis);
+                float newFRAME = distance * FRAME * 1.0f / maxDis;
                 float delta = 1.0f / newFRAME;
                 Log.e("FRAME", "FRAME: " + newFRAME);
                 for (float t = 0; t <= 1; t += delta) {
